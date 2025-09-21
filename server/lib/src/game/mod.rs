@@ -1,4 +1,3 @@
-use alloy_primitives::U256;
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 

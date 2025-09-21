@@ -22,16 +22,23 @@ pub fn main() {
     let c = sp1_zkvm::io::read::<u8>();
 
     // perform shuffle and deal and accept the result.
-    let response: GameState = shuffle_and_deal(p, c);
-    let initial_player_hands = response.player_hands;
-    let mut player_card_hashes = Vec::new();
-    for player_cards in &initial_player_hands {
-        let mut hasher = Sha256::new();
-        hasher.update(player_cards);
-        let player_hash = hasher.finalize().to_vec();
-        player_card_hashes.push(player_hash.into());
+    match shuffle_and_deal(p, c).await {
+        Ok(game_state) => {
+            let initial_player_hands = game_state.player_hands;
+            let mut player_card_hashes = Vec::new();
+            for player_cards in &initial_player_hands {
+                let mut hasher = Sha256::new();
+                hasher.update(player_cards);
+                let player_hash = hasher.finalize().to_vec();
+                player_card_hashes.push(player_hash.into());
+            }
+            let seed_used = game_state.seed_used;
+        }
+        Err(err) => {
+            println!("Error: {}", err);
+            return Err(err);
+        }
     }
-    let seed_used = response.seed_used;
 
     let publc_values = PublicValuesStruct {
         no_of_players: p,

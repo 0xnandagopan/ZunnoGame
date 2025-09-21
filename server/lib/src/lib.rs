@@ -1,18 +1,19 @@
+use alloy::primitives;
 use alloy_sol_types::sol;
 
 sol! {
     /// The public values encoded as a struct that can be easily deserialized inside Solidity.
     struct PublicValuesStruct {
-        u8 no_of_players;
-        u8 cards_per_player;
+        uint8 no_of_players;
+        uint8 cards_per_player;
         bytes[] initial_hands_hash;
-        u64 seed;
+        uint64 seed;
     }
 }
 
-mod api;
-mod blockchain;
-mod game;
+pub mod api;
+pub mod blockchain;
+pub mod game;
 
 use axum::{
     http::Method,
@@ -30,7 +31,7 @@ use crate::game::GameState;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Initialize logging
-    tracing_subscriber::init();
+    tracing_subscriber::fmt::init();
 
     // Initialize shared game state
     let game_state = Arc::new(RwLock::new(GameState::new()));
