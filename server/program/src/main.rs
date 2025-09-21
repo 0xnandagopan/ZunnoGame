@@ -1,0 +1,49 @@
+//! A simple program that takes a number `n` as input, and writes the `n-1`th and `n`th fibonacci
+//! number as an output.
+
+// These two lines are necessary for the program to properly compile.
+//
+// Under the hood, we wrap your main function with some extra code so that it behaves properly
+// inside the zkVM.
+#![no_main]
+sp1_zkvm::entrypoint!(main);
+
+use alloy_sol_types::SolType;
+use sha2::{Digest, Sha256};
+use zunnogame_lib::game::{shuffle_and_deal, GameState};
+use zunnogame_lib::PublicValuesStruct;
+
+pub fn main() {
+    // Read an input to the program.
+    //
+    // Behind the scenes, this compiles down to a custom system call which handles reading inputs
+    // from the prover.
+    let p = sp1_zkvm::io::read::<u8>();
+    let c = sp1_zkvm::io::read::<u8>();
+
+    // perform shuffle and deal and accept the result.
+    let response: GameState = shuffle_and_deal(p, c);
+    let initial_player_hands = response.player_hands;
+    let mut player_card_hashes = Vec::new();
+    for player_cards in &initial_player_hands {
+        let mut hasher = Sha256::new();
+        hasher.update(player_cards);
+        let player_hash = hasher.finalize().to_vec();
+        player_card_hashes.push(player_hash.into());
+    }
+    let seed_used = response.seed_used;
+
+    let publc_values = PublicValuesStruct {
+        no_of_players: p,
+        cards_per_player: c,
+        initial_hands_hash: player_card_hashes,
+        seed: seed_used,
+    };
+
+    // Encode the public values of the program.
+    let bytes = PublicValuesStruct::abi_encode(&publc_values);
+
+    // Commit to the public values of the program. The final proof will have a commitment to all the
+    // bytes that were committed to.
+    sp1_zkvm::io::commit_slice(&bytes);
+}
