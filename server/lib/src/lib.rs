@@ -1,5 +1,7 @@
 use alloy::primitives;
 use alloy_sol_types::sol;
+use anyhow::{anyhow, Result};
+use serde::{Deserialize, Serialize};
 
 sol! {
     /// The public values encoded as a struct that can be easily deserialized inside Solidity.
@@ -11,67 +13,96 @@ sol! {
     }
 }
 
-pub mod api;
-pub mod blockchain;
-pub mod game;
+pub const DECK_SIZE: usize = 108;
+pub const MAX_PLAYERS: u8 = 10;
+pub const MAX_CARDS_PER_PLAYER: u8 = 20;
 
-use axum::{
-    http::Method,
-    routing::{get, post},
-    Router,
-};
-use std::sync::Arc;
-use tokio::sync::RwLock;
-use tower_http::cors::{Any, CorsLayer};
-use tracing_subscriber;
+pub struct ShuffleOutcome {
+    pub player_hands: Vec<Vec<u8>>,
+    pub draw_pile: Vec<u8>,
+    pub draw_pile_count: u64,
+}
 
-use crate::api::handlers;
-use crate::game::GameState;
+/// Fisher-Yates shuffle with LCG PRNG
+pub fn shuffle_deck(deck: &mut [u8], seed: u64) {
+    let mut state = seed;
+    for i in (1..deck.len()).rev() {
+        state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
+        let j = (state % (i as u64 + 1)) as usize;
+        deck.swap(i, j);
+    }
+}
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    // Initialize logging
-    tracing_subscriber::fmt::init();
+/// Efficient card distribution using iterators
+pub fn distribute_cards(deck: &[u8], num_players: u8, cards_per_player: u8) -> Vec<Vec<u8>> {
+    let mut player_hands =
+        vec![Vec::with_capacity(cards_per_player as usize); num_players as usize];
 
-    // Initialize shared game state
-    let game_state = Arc::new(RwLock::new(GameState::new()));
+    deck.iter()
+        .take((num_players as usize) * (cards_per_player as usize))
+        .enumerate()
+        .for_each(|(i, &card)| {
+            let player_index = i % (num_players as usize);
+            player_hands[player_index].push(card);
+        });
 
-    // Configure CORS
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods([Method::GET, Method::POST])
-        .allow_headers(Any);
+    player_hands
+}
 
-    // Build the router
-    let app = Router::new()
-        // Core game endpoints
-        .route("/shuffle-and-deal", post(handlers::shuffle_and_deal))
-        .route("/player/:player_id/hand", get(handlers::get_initial_hands))
-        .route(
-            "/player/:player_id/hand-js",
-            get(handlers::get_initial_hands_js),
-        )
-        .route("/draw-card", post(handlers::draw_card))
-        .route("/draw-multiple", post(handlers::draw_multiple_cards))
-        .route("/play-card", post(handlers::play_card))
-        // Game state endpoints
-        .route("/game-state", get(handlers::get_game_state))
-        .route("/game-status", get(handlers::get_game_status))
-        .route("/top-discard", get(handlers::get_top_discard_card))
-        // Utility endpoints
-        .route("/reset", post(handlers::reset_game))
-        .route(
-            "/player/:player_id/hand-count",
-            get(handlers::get_player_hand_count),
-        )
-        .route("/health", get(handlers::health_check))
-        .with_state(game_state)
-        .layer(cors);
+/// Validate game parameters
+pub fn validate_game_params(num_players: u8, cards_per_player: u8) -> Result<()> {
+    if num_players == 0 || num_players > MAX_PLAYERS {
+        return Err(anyhow!(
+            "Invalid number of players: {} (must be 1-{})",
+            num_players,
+            MAX_PLAYERS
+        ));
+    }
 
-    // Start the server
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3001").await?;
-    tracing::info!("UNO backend server listening on 0.0.0.0:3001");
+    if cards_per_player == 0 || cards_per_player > MAX_CARDS_PER_PLAYER {
+        return Err(anyhow!(
+            "Invalid cards per player: {} (must be 1-{})",
+            cards_per_player,
+            MAX_CARDS_PER_PLAYER
+        ));
+    }
 
-    axum::serve(listener, app).await?;
+    let total_cards_needed = (num_players as usize) * (cards_per_player as usize);
+    if total_cards_needed >= DECK_SIZE {
+        return Err(anyhow!(
+            "Not enough cards: need {} for {} players with {} cards each (deck has {})",
+            total_cards_needed,
+            num_players,
+            cards_per_player,
+            DECK_SIZE
+        ));
+    }
+
     Ok(())
+}
+
+pub fn perform_shuffle(num_players: u8, cards_per_player: u8, seed: u64) -> Result<ShuffleOutcome> {
+    validate_game_params(num_players, cards_per_player);
+
+    // Create and shuffle deck
+    let mut deck: Vec<u8> = (0..DECK_SIZE as u8).collect();
+    shuffle_deck(&mut deck, seed);
+
+    // Distribute cards
+    let player_hands = distribute_cards(&deck, num_players, cards_per_player);
+
+    // Create draw pile from remaining cards
+    let total_cards_needed = (num_players as usize) * (cards_per_player as usize);
+    let draw_pile = deck[total_cards_needed..].to_vec();
+    let count = draw_pile.len();
+    let draw_pile_count: u64 = count.try_into().unwrap();
+
+    // Create shuffle outcome
+    let outcome = ShuffleOutcome {
+        player_hands,
+        draw_pile,
+        draw_pile_count,
+    };
+
+    Ok(outcome)
 }

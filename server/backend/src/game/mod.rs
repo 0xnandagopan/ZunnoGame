@@ -2,6 +2,7 @@ use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::blockchain;
+use zunnogame_lib::{ShuffleOutcome, perform_shuffle};
 
 // Consistent type - use u8 since MAX_PLAYERS = 10
 pub type PlayerId = u8;
@@ -60,76 +61,12 @@ pub const PACK_OF_CARDS: [&str; 108] = [
     "D4W", "D4W", "D4W", "D4W",
 ];
 
-pub const DECK_SIZE: usize = 108;
-pub const MAX_PLAYERS: u8 = 10;
-pub const MAX_CARDS_PER_PLAYER: u8 = 20;
-
 /// Convert index to card string (matches JavaScript side)
 pub fn index_to_card(index: u8) -> &'static str {
     PACK_OF_CARDS[index as usize]
 }
 
-/// Optimized in-place Fisher-Yates shuffle with LCG PRNG
-fn shuffle_deck(deck: &mut [u8], seed: u64) {
-    let mut state = seed;
-    for i in (1..deck.len()).rev() {
-        state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
-        let j = (state % (i as u64 + 1)) as usize;
-        deck.swap(i, j);
-    }
-}
-
-/// Efficient card distribution using iterators
-fn distribute_cards(deck: &[u8], num_players: u8, cards_per_player: u8) -> Vec<Vec<u8>> {
-    let mut player_hands =
-        vec![Vec::with_capacity(cards_per_player as usize); num_players as usize];
-
-    deck.iter()
-        .take((num_players as usize) * (cards_per_player as usize))
-        .enumerate()
-        .for_each(|(i, &card)| {
-            let player_index = i % (num_players as usize);
-            player_hands[player_index].push(card);
-        });
-
-    player_hands
-}
-
-/// Validate game parameters
-fn validate_game_params(num_players: u8, cards_per_player: u8) -> Result<()> {
-    if num_players == 0 || num_players > MAX_PLAYERS {
-        return Err(anyhow!(
-            "Invalid number of players: {} (must be 1-{})",
-            num_players,
-            MAX_PLAYERS
-        ));
-    }
-
-    if cards_per_player == 0 || cards_per_player > MAX_CARDS_PER_PLAYER {
-        return Err(anyhow!(
-            "Invalid cards per player: {} (must be 1-{})",
-            cards_per_player,
-            MAX_CARDS_PER_PLAYER
-        ));
-    }
-
-    let total_cards_needed = (num_players as usize) * (cards_per_player as usize);
-    if total_cards_needed >= DECK_SIZE {
-        return Err(anyhow!(
-            "Not enough cards: need {} for {} players with {} cards each (deck has {})",
-            total_cards_needed,
-            num_players,
-            cards_per_player,
-            DECK_SIZE
-        ));
-    }
-
-    Ok(())
-}
-
 pub async fn shuffle_and_deal(num_players: u8, cards_per_player: u8) -> Result<GameState> {
-    // Validate parameters
-    validate_game_params(num_players, cards_per_player)?;
 
     // Get blockchain seed
     let seed = blockchain::get_random_seed()
@@ -137,20 +74,11 @@ pub async fn shuffle_and_deal(num_players: u8, cards_per_player: u8) -> Result<G
         .map_err(|e| anyhow!("Failed to get blockchain seed: {}", e))?
         .to(); // Convert U256 to u64
 
-    // Create and shuffle deck
-    let mut deck: Vec<u8> = (0..DECK_SIZE as u8).collect();
-    shuffle_deck(&mut deck, seed);
-
-    // Distribute cards
-    let player_hands = distribute_cards(&deck, num_players, cards_per_player);
-
-    // Create draw pile from remaining cards
-    let total_cards_needed = (num_players as usize) * (cards_per_player as usize);
-    let draw_pile = deck[total_cards_needed..].to_vec();
+    let result: ShuffleOutcome = perform_shuffle(num_players, cards_per_player, seed);
 
     Ok(GameState {
-        player_hands,
-        draw_pile,
+        player_hands: result.player_hands,
+        draw_pile: result.draw_pile,
         discard_pile: Vec::new(),
         is_shuffled: true,
         seed_used: seed,
@@ -163,18 +91,12 @@ pub fn shuffle_and_deal_sync(
     cards_per_player: u8,
     seed: u64,
 ) -> Result<GameState> {
-    validate_game_params(num_players, cards_per_player)?;
 
-    let mut deck: Vec<u8> = (0..DECK_SIZE as u8).collect();
-    shuffle_deck(&mut deck, seed);
-
-    let player_hands = distribute_cards(&deck, num_players, cards_per_player);
-    let total_cards_needed = (num_players as usize) * (cards_per_player as usize);
-    let draw_pile = deck[total_cards_needed..].to_vec();
+    let result: ShuffleOutcome = perform_shuffle(num_players, cards_per_player, seed);
 
     Ok(GameState {
-        player_hands,
-        draw_pile,
+        player_hands: result.player_hands,
+        draw_pile: result.draw_pile,
         discard_pile: Vec::new(),
         is_shuffled: true,
         seed_used: seed,

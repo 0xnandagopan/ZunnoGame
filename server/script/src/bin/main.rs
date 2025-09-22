@@ -14,7 +14,6 @@ use alloy_sol_types::SolType;
 use clap::Parser;
 use sha2::{Digest, Sha256};
 use sp1_sdk::{include_elf, ProverClient, SP1Stdin};
-use zunnogame_lib::game::{shuffle_and_deal_sync, GameState};
 use zunnogame_lib::PublicValuesStruct;
 
 /// The ELF (executable and linkable format) file for the Succinct RISC-V zkVM.
@@ -33,7 +32,10 @@ fn main() {
     let c: u8 = 5;
     stdin.write(&c);
 
-    println!("inputs: p = {}, c = {}", p, c);
+    let r: u64 = 1234567890;
+    stdin.write(&r);
+
+    println!("inputs: p = {}, c = {}, r={}", p, c, r);
 
     // Setup the prover client.
     let client = ProverClient::from_env();

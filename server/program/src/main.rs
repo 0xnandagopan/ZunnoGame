@@ -10,8 +10,8 @@ sp1_zkvm::entrypoint!(main);
 
 use alloy_sol_types::SolType;
 use sha2::{Digest, Sha256};
-use zunnogame_lib::game::{shuffle_and_deal, GameState};
 use zunnogame_lib::PublicValuesStruct;
+use zunnogame_lib::{perform_shuffle, ShuffleOutcome};
 
 pub fn main() {
     // Read an input to the program.
@@ -20,11 +20,12 @@ pub fn main() {
     // from the prover.
     let p = sp1_zkvm::io::read::<u8>();
     let c = sp1_zkvm::io::read::<u8>();
+    let r = sp1_zkvm::io::read::<u64>();
 
     // perform shuffle and deal and accept the result.
-    match shuffle_and_deal(p, c).await {
-        Ok(game_state) => {
-            let initial_player_hands = game_state.player_hands;
+    match perform_shuffle(p, c, r) {
+        Ok(outcome) => {
+            let initial_player_hands = outcome.player_hands;
             let mut player_card_hashes = Vec::new();
             for player_cards in &initial_player_hands {
                 let mut hasher = Sha256::new();
@@ -32,7 +33,7 @@ pub fn main() {
                 let player_hash = hasher.finalize().to_vec();
                 player_card_hashes.push(player_hash.into());
             }
-            let seed_used = game_state.seed_used;
+            let seed_used = r;
 
             let publc_values = PublicValuesStruct {
                 no_of_players: p,
