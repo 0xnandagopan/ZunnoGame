@@ -1,4 +1,4 @@
-# 🎮 Zunno - Blockchains's 1st Uno game on zkVerify
+# Zunno - Blockchains's 1st Uno game on zkVerify
 
 A digital edition of the classic **UNO game**, designed with **fairness** and **verifiability** at its core.  
 Gameplay is transparent, secure, and trustless—powered by **smart contracts**, **Rust backend services**, and upcoming **zero-knowledge proofs**.
