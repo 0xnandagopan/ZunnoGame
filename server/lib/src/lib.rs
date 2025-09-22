@@ -1,4 +1,4 @@
-use alloy::primitives;
+use alloy_primitives;
 use alloy_sol_types::sol;
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};

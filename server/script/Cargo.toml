@@ -26,6 +26,8 @@ hex = "0.4.3"
 alloy-sol-types = { workspace = true }
 zunnogame-lib = { path = "../lib" }
 dotenv = "0.15.0"
+bincode = { version = "2", features = ["serde"] }
+sp1-zkv-sdk = { git="https://github.com/zkVerify/sp1-verifier" }
 
 [build-dependencies]
 sp1-build = "5.0.8"

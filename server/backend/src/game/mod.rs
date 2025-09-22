@@ -2,7 +2,9 @@ use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::blockchain;
-use zunnogame_lib::{ShuffleOutcome, perform_shuffle};
+use zunnogame_lib::{
+    distribute_cards, perform_shuffle, shuffle_deck, validate_game_params, ShuffleOutcome,
+};
 
 // Consistent type - use u8 since MAX_PLAYERS = 10
 pub type PlayerId = u8;
@@ -67,14 +69,13 @@ pub fn index_to_card(index: u8) -> &'static str {
 }
 
 pub async fn shuffle_and_deal(num_players: u8, cards_per_player: u8) -> Result<GameState> {
-
     // Get blockchain seed
     let seed = blockchain::get_random_seed()
         .await
         .map_err(|e| anyhow!("Failed to get blockchain seed: {}", e))?
         .to(); // Convert U256 to u64
 
-    let result: ShuffleOutcome = perform_shuffle(num_players, cards_per_player, seed);
+    let result: ShuffleOutcome = perform_shuffle(num_players, cards_per_player, seed)?;
 
     Ok(GameState {
         player_hands: result.player_hands,
@@ -91,8 +92,7 @@ pub fn shuffle_and_deal_sync(
     cards_per_player: u8,
     seed: u64,
 ) -> Result<GameState> {
-
-    let result: ShuffleOutcome = perform_shuffle(num_players, cards_per_player, seed);
+    let result: ShuffleOutcome = perform_shuffle(num_players, cards_per_player, seed)?;
 
     Ok(GameState {
         player_hands: result.player_hands,
