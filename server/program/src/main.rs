@@ -33,24 +33,23 @@ pub fn main() {
                 player_card_hashes.push(player_hash.into());
             }
             let seed_used = game_state.seed_used;
+
+            let publc_values = PublicValuesStruct {
+                no_of_players: p,
+                cards_per_player: c,
+                initial_hands_hash: player_card_hashes,
+                seed: seed_used,
+            };
+
+            // Encode the public values of the program.
+            let bytes = PublicValuesStruct::abi_encode(&publc_values);
+
+            // Commit to the public values of the program. The final proof will have a commitment to all the
+            // bytes that were committed to.
+            sp1_zkvm::io::commit_slice(&bytes);
         }
         Err(err) => {
-            println!("Error: {}", err);
-            return Err(err);
+            panic!("Invalid game parameters or shuffle failed");
         }
     }
-
-    let publc_values = PublicValuesStruct {
-        no_of_players: p,
-        cards_per_player: c,
-        initial_hands_hash: player_card_hashes,
-        seed: seed_used,
-    };
-
-    // Encode the public values of the program.
-    let bytes = PublicValuesStruct::abi_encode(&publc_values);
-
-    // Commit to the public values of the program. The final proof will have a commitment to all the
-    // bytes that were committed to.
-    sp1_zkvm::io::commit_slice(&bytes);
 }
