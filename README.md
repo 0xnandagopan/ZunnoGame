@@ -46,11 +46,14 @@ Gameplay is transparent, secure, and trustless—powered by **smart contracts**,
 
 ---
 
-🔮 Vision
+
+## 🎥 Demo
+
+Watch the demo here: [Zunno Demo Video](https://drive.google.com/drive/folders/1kOLVC7rXofUjcnWJIJguSVhH-AgqAj9N)
+
+---
+
+## 🔮 Vision
 
 The goal is to make digital card games provably fair—eliminating hidden logic, ensuring verifiable randomness, and building trustless entertainment on-chain.
-
-
-
-`
 
