@@ -45,7 +45,15 @@ Gameplay is transparent, secure, and trustless—powered by **smart contracts**,
 /contracts    → Solidity smart contracts (Base Sepolia)
 
 ---
+## ⚖️ Verifiable Fairness
 
+During gameplay, an ordered deck of UNO cards is shuffled using the **Fisher–Yates algorithm** and distributed among players, with the remaining shuffled cards forming the draw pile.
+
+The shuffling process incorporates randomness via **Chainlink VRF**, removing any need for blind trust or reliance on predictable shuffle arrangements.
+
+🔗 [ZkVerify verification result for randomized shuffle implementation](https://zkverify-testnet.subscan.io/extrinsic/0x8baaa3526e3615c4a9625b31e6ff574e5886a376dfdb196d727640bd1f9a5b0c)
+
+---
 
 ## 🎥 Demo
 
