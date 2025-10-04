@@ -1,9 +1,9 @@
 use alloy::{
     primitives::{Address, U256},
-    providers::{Provider, ProviderBuilder},
+    providers::ProviderBuilder,
     sol,
 };
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use dotenvy::dotenv;
 use rand::Rng;
 use std::env;
