@@ -5,10 +5,11 @@ pub mod handlers {
         response::Json,
     };
     use serde::{Deserialize, Serialize};
-    use std::sync::Arc;
-    use tokio::sync::RwLock;
 
-    use crate::game::{self, GameState, GameStateJS, PlayerId};
+    use crate::{
+        game::{self, GameState, GameStateJS, PlayerId},
+        SharedGames,
+    };
 
     // ============================================================================
     // REQUEST/RESPONSE TYPES
@@ -121,12 +122,23 @@ pub mod handlers {
         pub format: Option<String>, // "js" or "raw"
     }
 
+    fn game_not_found(game_id: &str) -> (StatusCode, Json<ErrorResponse>) {
+        (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: format!("Game {} not found", game_id),
+                code: "GAME_NOT_FOUND".to_string(),
+            }),
+        )
+    }
+
     // ============================================================================
     // CORE GAME ENDPOINTS
     // ============================================================================
 
     pub async fn shuffle_and_deal(
-        State(game_state): State<Arc<RwLock<GameState>>>,
+        State(games): State<SharedGames>,
+        Path(game_id): Path<String>,
         Json(payload): Json<ShuffleAndDealRequest>,
     ) -> Result<Json<ShuffleAndDealResponse>, (StatusCode, Json<ErrorResponse>)> {
         match game::shuffle_and_deal(payload.players, payload.cards_per_player).await {
@@ -134,7 +146,10 @@ pub mod handlers {
                 let cards_remaining = new_game_state.draw_pile.len();
                 let seed_used = new_game_state.seed_used;
 
-                *game_state.write().await = new_game_state;
+                {
+                    let mut games_guard = games.write().await;
+                    games_guard.insert(game_id.clone(), new_game_state);
+                }
 
                 Ok(Json(ShuffleAndDealResponse {
                     success: true,
@@ -156,12 +171,16 @@ pub mod handlers {
     }
 
     pub async fn get_initial_hands(
-        State(game_state): State<Arc<RwLock<GameState>>>,
-        Path(player_id): Path<PlayerId>,
+        State(games): State<SharedGames>,
+        Path((game_id, player_id)): Path<(String, PlayerId)>,
     ) -> Result<Json<InitialHandsResponse>, (StatusCode, Json<ErrorResponse>)> {
-        let state = game_state.read().await;
+        let games_guard = games.read().await;
+        let state = match games_guard.get(&game_id) {
+            Some(state) => state,
+            None => return Err(game_not_found(&game_id)),
+        };
 
-        match game::get_initial_hands(&state, player_id) {
+        match game::get_initial_hands(state, player_id) {
             Ok(cards) => {
                 let cards_js = game::convert_indexes_to_js_cards(&cards);
                 let card_count = cards.len();
@@ -185,12 +204,16 @@ pub mod handlers {
 
     // JavaScript-optimized version (only returns JS format)
     pub async fn get_initial_hands_js(
-        State(game_state): State<Arc<RwLock<GameState>>>,
-        Path(player_id): Path<PlayerId>,
+        State(games): State<SharedGames>,
+        Path((game_id, player_id)): Path<(String, PlayerId)>,
     ) -> Result<Json<InitialHandsJSResponse>, (StatusCode, Json<ErrorResponse>)> {
-        let state = game_state.read().await;
+        let games_guard = games.read().await;
+        let state = match games_guard.get(&game_id) {
+            Some(state) => state,
+            None => return Err(game_not_found(&game_id)),
+        };
 
-        match game::serialize_player_hand_js(&state, player_id) {
+        match game::serialize_player_hand_js(state, player_id) {
             Ok(cards) => {
                 let card_count = cards.len();
                 Ok(Json(InitialHandsJSResponse {
@@ -210,12 +233,17 @@ pub mod handlers {
     }
 
     pub async fn draw_card(
-        State(game_state): State<Arc<RwLock<GameState>>>,
+        State(games): State<SharedGames>,
+        Path(game_id): Path<String>,
         Json(payload): Json<DrawCardRequest>,
     ) -> Result<Json<DrawCardResponse>, (StatusCode, Json<ErrorResponse>)> {
-        let mut state = game_state.write().await;
+        let mut games_guard = games.write().await;
+        let state = match games_guard.get_mut(&game_id) {
+            Some(state) => state,
+            None => return Err(game_not_found(&game_id)),
+        };
 
-        match game::draw_card(&mut state, payload.player_id) {
+        match game::draw_card(state, payload.player_id) {
             Ok(card) => {
                 let new_hand_size = state
                     .player_hands
@@ -245,12 +273,17 @@ pub mod handlers {
     }
 
     pub async fn draw_multiple_cards(
-        State(game_state): State<Arc<RwLock<GameState>>>,
+        State(games): State<SharedGames>,
+        Path(game_id): Path<String>,
         Json(payload): Json<DrawMultipleRequest>,
     ) -> Result<Json<DrawMultipleResponse>, (StatusCode, Json<ErrorResponse>)> {
-        let mut state = game_state.write().await;
+        let mut games_guard = games.write().await;
+        let state = match games_guard.get_mut(&game_id) {
+            Some(state) => state,
+            None => return Err(game_not_found(&game_id)),
+        };
 
-        match game::draw_multiple_cards(&mut state, payload.player_id, payload.count) {
+        match game::draw_multiple_cards(state, payload.player_id, payload.count) {
             Ok(cards) => {
                 let cards_js = game::convert_indexes_to_js_cards(&cards);
                 let new_hand_size = state
@@ -279,12 +312,17 @@ pub mod handlers {
     }
 
     pub async fn play_card(
-        State(game_state): State<Arc<RwLock<GameState>>>,
+        State(games): State<SharedGames>,
+        Path(game_id): Path<String>,
         Json(payload): Json<PlayCardRequest>,
     ) -> Result<Json<PlayCardResponse>, (StatusCode, Json<ErrorResponse>)> {
-        let mut state = game_state.write().await;
+        let mut games_guard = games.write().await;
+        let state = match games_guard.get_mut(&game_id) {
+            Some(state) => state,
+            None => return Err(game_not_found(&game_id)),
+        };
 
-        match game::play_card(&mut state, payload.player_id, payload.card_index) {
+        match game::play_card(state, payload.player_id, payload.card_index) {
             Ok(played_card) => {
                 let played_card_js = game::convert_card_to_js(played_card);
                 let new_hand_size = state
@@ -313,16 +351,19 @@ pub mod handlers {
     }
 
     pub async fn get_game_state(
-        State(game_state): State<Arc<RwLock<GameState>>>,
+        State(games): State<SharedGames>,
+        Path(game_id): Path<String>,
         Query(params): Query<GameStateQuery>,
     ) -> Result<Json<GameStateResponse>, (StatusCode, Json<ErrorResponse>)> {
-        let state = game_state.read().await;
+        let games_guard = games.read().await;
+        let state = match games_guard.get(&game_id) {
+            Some(state) => state,
+            None => return Err(game_not_found(&game_id)),
+        };
 
-        let mut game_state_js = GameStateJS::from(&*state);
+        let mut game_state_js = GameStateJS::from(state);
 
-        // Option to hide other players' hands for security
         if !params.include_all_hands.unwrap_or(false) {
-            // Clear other players' hands for security
             for hand in &mut game_state_js.player_hands {
                 hand.clear();
                 hand.push("HIDDEN".to_string());
@@ -337,9 +378,14 @@ pub mod handlers {
     }
 
     pub async fn get_game_status(
-        State(game_state): State<Arc<RwLock<GameState>>>,
+        State(games): State<SharedGames>,
+        Path(game_id): Path<String>,
     ) -> Result<Json<GameStatusResponse>, (StatusCode, Json<ErrorResponse>)> {
-        let state = game_state.read().await;
+        let games_guard = games.read().await;
+        let state = match games_guard.get(&game_id) {
+            Some(state) => state,
+            None => return Err(game_not_found(&game_id)),
+        };
 
         Ok(Json(GameStatusResponse {
             is_initialized: state.is_initialized(),
@@ -352,9 +398,14 @@ pub mod handlers {
     }
 
     pub async fn get_top_discard_card(
-        State(game_state): State<Arc<RwLock<GameState>>>,
+        State(games): State<SharedGames>,
+        Path(game_id): Path<String>,
     ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-        let state = game_state.read().await;
+        let games_guard = games.read().await;
+        let state = match games_guard.get(&game_id) {
+            Some(state) => state,
+            None => return Err(game_not_found(&game_id)),
+        };
 
         if let Some(&top_card) = state.discard_pile.last() {
             let card_js = game::convert_card_to_js(top_card);
@@ -377,26 +428,37 @@ pub mod handlers {
     // ============================================================================
 
     pub async fn reset_game(
-        State(game_state): State<Arc<RwLock<GameState>>>,
+        State(games): State<SharedGames>,
+        Path(game_id): Path<String>,
     ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-        let mut state = game_state.write().await;
-        *state = GameState::new();
+        let mut games_guard = games.write().await;
+        let was_existing = games_guard.contains_key(&game_id);
+        games_guard.insert(game_id.clone(), GameState::new());
 
         Ok(Json(serde_json::json!({
             "success": true,
-            "message": "Game reset successfully"
+            "message": if was_existing {
+                format!("Game {} reset successfully", game_id)
+            } else {
+                format!("Game {} created and reset", game_id)
+            }
         })))
     }
 
     pub async fn get_player_hand_count(
-        State(game_state): State<Arc<RwLock<GameState>>>,
-        Path(player_id): Path<PlayerId>,
+        State(games): State<SharedGames>,
+        Path((game_id, player_id)): Path<(String, PlayerId)>,
     ) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
-        let state = game_state.read().await;
+        let games_guard = games.read().await;
+        let state = match games_guard.get(&game_id) {
+            Some(state) => state,
+            None => return Err(game_not_found(&game_id)),
+        };
 
         if state.is_valid_player(player_id) {
             let hand_size = state.player_hands[player_id as usize].len();
             Ok(Json(serde_json::json!({
+                "game_id": game_id,
                 "player_id": player_id,
                 "hand_size": hand_size
             })))
@@ -404,7 +466,7 @@ pub mod handlers {
             Err((
                 StatusCode::BAD_REQUEST,
                 Json(ErrorResponse {
-                    error: format!("Player {} not found", player_id),
+                    error: format!("Player {} not found in game {}", player_id, game_id),
                     code: "PLAYER_NOT_FOUND".to_string(),
                 }),
             ))
