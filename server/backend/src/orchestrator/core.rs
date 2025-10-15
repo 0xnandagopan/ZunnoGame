@@ -1,5 +1,6 @@
 // backend/src/orchestrator/core.rs
 
+use alloy::primitives::U256;
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -12,6 +13,7 @@ use super::storage::{
 use crate::blockchain::{BlockchainAdapter, BlockchainSeed, U256};
 use crate::game::{perform_shuffle, GameState};
 use crate::proof_management::{IpfsProvider, IpfsService, IpfsUploadConfig};
+use zunnogame_script::{ProofGenerator, ProofInput, ProofOutput};
 
 /// Main orchestrator that coordinates VRF requests, game initialization, and state management
 #[derive(Clone)]
@@ -22,15 +24,22 @@ pub struct GameOrchestrator {
     completed_games: Arc<RwLock<HashMap<String, GameState>>>,
     /// Blockchain adapter for VRF operations
     blockchain: Arc<BlockchainAdapter>,
+    // Proof generator (expensive to create, reuse)
+    proof_generator: Arc<ProofGenerator>,
 }
 
 impl GameOrchestrator {
     /// Create a new game orchestrator
     pub async fn new(blockchain: BlockchainAdapter) -> Result<Self> {
+        tracing::info!("Initializing proof generator...");
+        let proof_generator = Arc::new(ProofGenerator::new()?);
+        tracing::info!("Proof generator ready");
+
         Ok(Self {
             pending_games: Arc::new(RwLock::new(HashMap::new())),
             completed_games: Arc::new(RwLock::new(HashMap::new())),
             blockchain: Arc::new(blockchain),
+            proof_generator,
         })
     }
 
@@ -289,16 +298,44 @@ impl GameOrchestrator {
         // TODO: Generate ZK proof here
         // let proof = generate_zk_proof(num_players, cards_per_player, seed_bytes).await?;
         // let proof_cid = upload_to_ipfs(&proof).await?;
+        tracing::info!(session_id = session_id, "Generating ZK proof...");
+
+        let proof_result = tokio::task::spawn_blocking({
+            let proof_generator = self.proof_generator.clone();
+            let random_value = random_value.clone();
+
+            move || {
+                proof_generator.generate_proof(ProofInput {
+                    num_players,
+                    cards_per_player,
+                    seed: random_value,
+                })
+            }
+        })
+        .await
+        .map_err(|e| anyhow!("Proof generation task panicked: {}", e))??;
+
+        tracing::info!(
+            session_id = session_id,
+            proof_id = %proof_result.image_id[..18],
+            "Proof generated successfully"
+        );
 
         // Generate JSON output
         let output = ActionOutput {
             id: session_id,
             timestamp: chrono::Utc::now().to_rfc3339(),
-            data: proof,
+            data: serde_json::to_string_pretty(&proof_result), //proof-json
             ipfs_cid: None,
         };
 
-        let proof_cid = self.upload_to_ipfs(output).await?;
+        let proof_cid: String = self.upload_proof(output).await?;
+
+        tracing::info!(
+            session_id = session_id,
+            proof_cid = %proof_cid,
+            "Proof stored"
+        );
 
         // Create game state
         let game_state = GameState {
@@ -330,7 +367,7 @@ impl GameOrchestrator {
         Ok(())
     }
 
-    async fn upload_proof(&self, output: ActionOutput) -> Option<String> {
+    async fn upload_proof(&self, output: ActionOutput) -> Result<String> {
         // Initialize IPFS service (typically done once at app startup)
         let provider = IpfsProvider::from_env()?;
         let config = IpfsUploadConfig::default();
@@ -338,10 +375,15 @@ impl GameOrchestrator {
 
         // Upload to IPFS
         let filename = format!("proof_{}.json", output.id);
-        let cid = ipfs_service.upload_with_retry(&output, &filename).await?;
-
-        let ipfs_cid = Ok(cid);
-        ipfs_cid
+        match ipfs_service.upload_with_retry(&output, &filename).await {
+            Ok(cid) => {
+                return Ok(cid);
+            }
+            Err(err) => {
+                tracing::error!("Failed to upload proof to IPFS: {}", err);
+                None
+            }
+        }
     }
 
     /// Cleanup expired pending games (older than 10 minutes)

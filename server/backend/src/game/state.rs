@@ -24,7 +24,7 @@ pub struct GameState {
     pub discard_pile: Vec<u8>,
     pub is_shuffled: bool,
     pub seed_metadata: BlockchainSeed,
-    pub proof_cid: Option<String>, // IPFS CID
+    pub proof_cid: String, // IPFS CID
 }
 
 impl GameState {

@@ -38,7 +38,7 @@ impl IpfsService {
         &self,
         data: &T,
         filename: &str,
-    ) -> IpfsResult<String> {
+    ) -> Result<String> {
         let mut attempts = 0;
 
         loop {

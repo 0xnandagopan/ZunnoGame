@@ -21,7 +21,8 @@ async fn main() -> Result<()> {
         .with_env_filter(
             tracing_subscriber::EnvFilter::from_default_env()
                 .add_directive("backend=debug".parse().unwrap())
-                .add_directive("tower_http=debug".parse().unwrap()),
+                .add_directive("tower_http=debug".parse().unwrap())
+                .add_directive("zunnogame_script=info".parse().unwrap()),
         )
         .init();
 
@@ -47,6 +48,7 @@ async fn main() -> Result<()> {
         .route("/api/game/start", post(api::start_game))
         .route("/api/game/:session_id/status", get(api::get_game_status))
         .route("/api/game/:session_id", get(api::get_game_state))
+        .route("/api/game/:session_id/proof", get(api::get_game_proof))
         .route("/health", get(|| async { "OK" }))
         .layer(TraceLayer::new_for_http())
         .with_state(orchestrator);
@@ -60,6 +62,7 @@ async fn main() -> Result<()> {
     tracing::info!("  POST   /api/game/start");
     tracing::info!("  GET    /api/game/:session_id/status");
     tracing::info!("  GET    /api/game/:session_id");
+    tracing::info!("  GET    /api/game/:session_id/proof");
     tracing::info!("  GET    /health");
 
     axum::serve(listener, app).await?;
