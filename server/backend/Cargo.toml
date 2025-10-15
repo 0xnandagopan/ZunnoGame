@@ -32,6 +32,9 @@ thiserror = "1.0"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 
+#Pinata
+pinata_sdk = "1.1.0"
+
 # Utilities
 dotenvy = "0.15"
 chrono = "0.4.42"

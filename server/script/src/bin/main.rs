@@ -21,7 +21,7 @@ struct Args {
 
     /// Seed value (as decimal)
     #[arg(short, long, default_value_t = 12345)]
-    seed: u64,
+    seed: U256,
 
     /// Output file path
     #[arg(short, long, default_value = "proof.json")]

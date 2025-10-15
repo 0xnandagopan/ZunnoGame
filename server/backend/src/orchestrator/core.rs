@@ -295,9 +295,7 @@ impl GameOrchestrator {
 
         tracing::info!(session_id = session_id, "Shuffle complete");
 
-        // TODO: Generate ZK proof here
-        // let proof = generate_zk_proof(num_players, cards_per_player, seed_bytes).await?;
-        // let proof_cid = upload_to_ipfs(&proof).await?;
+        
         tracing::info!(session_id = session_id, "Generating ZK proof...");
 
         let proof_result = tokio::task::spawn_blocking({
@@ -368,14 +366,13 @@ impl GameOrchestrator {
     }
 
     async fn upload_proof(&self, output: ActionOutput) -> Result<String> {
-        // Initialize IPFS service (typically done once at app startup)
+        // Initialize IPFS service
         let provider = IpfsProvider::from_env()?;
         let config = IpfsUploadConfig::default();
         let ipfs_service = IpfsService::new(provider, config);
 
         // Upload to IPFS
-        let filename = format!("proof_{}.json", output.id);
-        match ipfs_service.upload_with_retry(&output, &filename).await {
+        match ipfs_service.upload_with_retry(&output).await {
             Ok(cid) => {
                 return Ok(cid);
             }

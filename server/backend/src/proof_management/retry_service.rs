@@ -37,12 +37,11 @@ impl IpfsService {
     pub async fn upload_with_retry<T: serde::Serialize>(
         &self,
         data: &T,
-        filename: &str,
     ) -> Result<String> {
         let mut attempts = 0;
 
         loop {
-            match self.uploader.upload_json(data, filename).await {
+            match self.uploader.upload_json(data).await {
                 Ok(cid) => {
                     println!("✓ Upload successful. CID: {}", cid);
                     return Ok(cid);

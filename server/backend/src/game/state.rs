@@ -35,7 +35,7 @@ impl GameState {
             discard_pile: Vec::new(),
             is_shuffled: false,
             seed_metadata: BlockchainSeed::default(),
-            proof_cid: None,
+            proof_cid: String::new(),
         }
     }
 
