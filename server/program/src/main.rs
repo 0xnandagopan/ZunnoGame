@@ -14,7 +14,7 @@ pub fn main() {
     // Read inputs
     let p = sp1_zkvm::io::read::<u8>(); // players
     let c = sp1_zkvm::io::read::<u8>(); // cards per player
-    let r = sp1_zkvm::io::read::<U256>(); // 256-bit seed (NOT u64!)
+    let r = sp1_zkvm::io::read::<U256>(); // 256-bit seed
 
     match perform_shuffle(p, c, r) {
         Ok(outcome) => {

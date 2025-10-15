@@ -7,10 +7,11 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use super::storage::{
-    current_timestamp, GameInitiation, GameStatus, GameStatusResponse, PendingGame,
+    current_timestamp, ActionOutput, GameInitiation, GameStatus, GameStatusResponse, PendingGame,
 };
 use crate::blockchain::{BlockchainAdapter, BlockchainSeed, U256};
 use crate::game::{perform_shuffle, GameState};
+use crate::proof_management::{IpfsProvider, IpfsService, IpfsUploadConfig};
 
 /// Main orchestrator that coordinates VRF requests, game initialization, and state management
 #[derive(Clone)]
@@ -289,6 +290,16 @@ impl GameOrchestrator {
         // let proof = generate_zk_proof(num_players, cards_per_player, seed_bytes).await?;
         // let proof_cid = upload_to_ipfs(&proof).await?;
 
+        // Generate JSON output
+        let output = ActionOutput {
+            id: session_id,
+            timestamp: chrono::Utc::now().to_rfc3339(),
+            data: proof,
+            ipfs_cid: None,
+        };
+
+        let proof_cid = self.upload_to_ipfs(output).await?;
+
         // Create game state
         let game_state = GameState {
             player_hands: shuffle_outcome.player_hands,
@@ -299,7 +310,7 @@ impl GameOrchestrator {
                 value: random_value,
                 request_id,
             },
-            proof_cid: None, // TODO: Set after proof generation
+            proof_cid,
         };
 
         // Store completed game
@@ -317,6 +328,20 @@ impl GameOrchestrator {
         tracing::info!(session_id = session_id, "Game ready!");
 
         Ok(())
+    }
+
+    async fn upload_proof(&self, output: ActionOutput) -> Option<String> {
+        // Initialize IPFS service (typically done once at app startup)
+        let provider = IpfsProvider::from_env()?;
+        let config = IpfsUploadConfig::default();
+        let ipfs_service = IpfsService::new(provider, config);
+
+        // Upload to IPFS
+        let filename = format!("proof_{}.json", output.id);
+        let cid = ipfs_service.upload_with_retry(&output, &filename).await?;
+
+        let ipfs_cid = Ok(cid);
+        ipfs_cid
     }
 
     /// Cleanup expired pending games (older than 10 minutes)

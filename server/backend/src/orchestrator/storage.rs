@@ -48,6 +48,15 @@ pub struct GameStatusResponse {
     pub vrf_request_id: Option<U256>,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ActionOutput {
+    pub id: String,
+    pub timestamp: String,
+    pub data: serde_json::Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ipfs_cid: Option<String>,
+}
+
 /// Helper to get current Unix timestamp
 pub fn current_timestamp() -> u64 {
     std::time::SystemTime::now()
@@ -55,4 +64,3 @@ pub fn current_timestamp() -> u64 {
         .unwrap()
         .as_secs()
 }
-
