@@ -34,10 +34,7 @@ impl IpfsService {
     }
 
     /// Upload with automatic retry on failure
-    pub async fn upload_with_retry<T: serde::Serialize>(
-        &self,
-        data: &T,
-    ) -> Result<String> {
+    pub async fn upload_with_retry<T: serde::Serialize>(&self, data: &T) -> Result<String> {
         let mut attempts = 0;
 
         loop {

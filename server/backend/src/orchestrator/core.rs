@@ -295,7 +295,6 @@ impl GameOrchestrator {
 
         tracing::info!(session_id = session_id, "Shuffle complete");
 
-        
         tracing::info!(session_id = session_id, "Generating ZK proof...");
 
         let proof_result = tokio::task::spawn_blocking({
