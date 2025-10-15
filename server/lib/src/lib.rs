@@ -1,15 +1,20 @@
 use alloy_primitives;
+use alloy_primitives::U256;
 use alloy_sol_types::sol;
 use anyhow::{anyhow, Result};
+use rand::seq::SliceRandom;
+use rand::SeedableRng;
+use rand_chacha::ChaCha20Rng;
 use serde::{Deserialize, Serialize};
 
 sol! {
-    /// The public values encoded as a struct that can be easily deserialized inside Solidity.
     struct PublicValuesStruct {
         uint8 no_of_players;
         uint8 cards_per_player;
         bytes[] initial_hands_hash;
-        uint64 seed;
+        bytes32 draw_pile_hash;
+        bytes32 merkle_root;
+        bytes32 seed;
     }
 }
 
@@ -17,20 +22,26 @@ pub const DECK_SIZE: usize = 108;
 pub const MAX_PLAYERS: u8 = 10;
 pub const MAX_CARDS_PER_PLAYER: u8 = 20;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShuffleOutcome {
     pub player_hands: Vec<Vec<u8>>,
     pub draw_pile: Vec<u8>,
     pub draw_pile_count: u64,
 }
 
-/// Fisher-Yates shuffle with LCG PRNG
-pub fn shuffle_deck(deck: &mut [u8], seed: u64) {
-    let mut state = seed;
-    for i in (1..deck.len()).rev() {
-        state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
-        let j = (state % (i as u64 + 1)) as usize;
-        deck.swap(i, j);
-    }
+pub fn u256_to_bytes32(value: U256) -> [u8; 32] {
+    let mut bytes = [0u8; 32];
+    bytes.copy_from_slice(&value.to_be_bytes::<32>());
+    bytes
+}
+
+/// Fisher-Yates shuffle
+pub fn shuffle_deck(deck: &mut [u8], seed: U256) {
+    // Convert U256 seed to [u8; 32]
+    let seed_bytes = u256_to_bytes32(seed);
+
+    let mut rng = ChaCha20Rng::from_seed(seed_bytes);
+    deck.shuffle(&mut rng);
 }
 
 /// Efficient card distribution using iterators
@@ -81,11 +92,20 @@ pub fn validate_game_params(num_players: u8, cards_per_player: u8) -> Result<()>
     Ok(())
 }
 
-pub fn perform_shuffle(num_players: u8, cards_per_player: u8, seed: u64) -> Result<ShuffleOutcome> {
-    validate_game_params(num_players, cards_per_player);
+pub fn perform_shuffle(
+    num_players: u8,
+    cards_per_player: u8,
+    seed: U256,
+) -> Result<ShuffleOutcome> {
+    match validate_game_params(num_players, cards_per_player) {
+        Ok(_) => (),
+        Err(e) => return Err(e),
+    }
 
-    // Create and shuffle deck
+    // Create deck
     let mut deck: Vec<u8> = (0..DECK_SIZE as u8).collect();
+
+    //shuffle deck
     shuffle_deck(&mut deck, seed);
 
     // Distribute cards

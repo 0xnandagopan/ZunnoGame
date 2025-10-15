@@ -10,6 +10,7 @@
 //! RUST_LOG=info cargo run --release -- --prove
 //! ```
 
+use alloy_primitives::U256;
 use alloy_sol_types::SolType;
 use clap::Parser;
 use sp1_sdk::{include_elf, HashableKey, ProverClient, SP1Stdin};
@@ -49,7 +50,7 @@ fn main() {
     let c: u8 = 5;
     stdin.write(&c);
 
-    let r: u64 = 1234567890;
+    let r: u64 = U256::from(12345);
     stdin.write(&r);
 
     println!("inputs: p = {}, c = {}, r={}", p, c, r);
