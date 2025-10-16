@@ -8576,8 +8576,6 @@ dependencies = [
 name = "zunno-program"
 version = "0.1.0"
 dependencies = [
- "alloy",
- "alloy-primitives",
  "alloy-sol-types",
  "sha2",
  "sp1-zkvm",
@@ -8588,7 +8586,6 @@ dependencies = [
 name = "zunno-script"
 version = "0.1.0"
 dependencies = [
- "alloy-primitives",
  "alloy-sol-types",
  "anyhow",
  "bincode 2.0.1",
@@ -8638,7 +8635,6 @@ dependencies = [
 name = "zunnogame-lib"
 version = "0.1.0"
 dependencies = [
- "alloy-primitives",
  "alloy-sol-types",
  "anyhow",
  "rand 0.8.5",

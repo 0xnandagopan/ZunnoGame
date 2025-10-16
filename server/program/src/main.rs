@@ -5,16 +5,15 @@
 #![no_main]
 sp1_zkvm::entrypoint!(main);
 
-use alloy::primitives::U256;
 use alloy_sol_types::SolType;
 use sha2::{Digest, Sha256};
-use zunnogame_lib::{perform_shuffle, u256_to_bytes32, PublicValuesStruct};
+use zunnogame_lib::{perform_shuffle, PublicValuesStruct};
 
 pub fn main() {
     // Read inputs
     let p = sp1_zkvm::io::read::<u8>(); // players
     let c = sp1_zkvm::io::read::<u8>(); // cards per player
-    let r = sp1_zkvm::io::read::<U256>(); // 256-bit seed
+    let r = sp1_zkvm::io::read::<[u8; 32]>(); // 256-bit seed
 
     match perform_shuffle(p, c, r) {
         Ok(outcome) => {
@@ -43,8 +42,6 @@ pub fn main() {
                 "Shuffle must be a valid permutation - no duplicates or missing cards"
             );
 
-            let seed_value: [u8; 32] = u256_to_bytes32(r);
-
             // ========================================
             // Proof: Build Merkle tree for card proofs
             // ========================================
@@ -54,7 +51,7 @@ pub fn main() {
                 .map(|(position, &card_value)| {
                     let mut hasher = Sha256::new();
                     hasher.update(b"ZUNNO_CARD_LEAF_V1");
-                    hasher.update(&seed_value); // Bind to game seed
+                    hasher.update(&r); // Bind to game seed
                     hasher.update(&(position as u64).to_le_bytes());
                     hasher.update(&[card_value]);
                     hasher.finalize().into()
@@ -69,7 +66,7 @@ pub fn main() {
             let draw_pile_hash: [u8; 32] = {
                 let mut hasher = Sha256::new();
                 hasher.update(b"ZUNNO_DRAW_PILE_V1");
-                hasher.update(&seed_value); // Bind to seed
+                hasher.update(&r); // Bind to seed
                 hasher.update(&outcome.draw_pile);
                 hasher.finalize().into()
             };
@@ -83,7 +80,7 @@ pub fn main() {
                 let salt = {
                     let mut hasher = Sha256::new();
                     hasher.update(b"ZUNNO_PLAYER_SALT_V1");
-                    hasher.update(&seed_value);
+                    hasher.update(&r);
                     hasher.update(&[player_id as u8]);
                     hasher.finalize()
                 };
@@ -105,7 +102,7 @@ pub fn main() {
                 initial_hands_hash: player_hand_hashes,
                 draw_pile_hash: draw_pile_hash.into(),
                 merkle_root: merkle_root.into(),
-                seed: seed_value.into(),
+                seed: r.into(),
             };
 
             let bytes = PublicValuesStruct::abi_encode(&public_values);

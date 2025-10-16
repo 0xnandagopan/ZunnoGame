@@ -64,3 +64,15 @@ pub fn current_timestamp() -> u64 {
         .unwrap()
         .as_secs()
 }
+
+/// Converts a U256 value to a 32-byte array (big-endian).
+pub fn u256_to_bytes32(value: U256) -> [u8; 32] {
+    let mut bytes = [0u8; 32];
+    bytes.copy_from_slice(&value.to_be_bytes::<32>());
+    bytes
+}
+
+/// Converts a 32-byte array (big-endian) to a U256 value.
+pub fn bytes32_to_u256(bytes: [u8; 32]) -> U256 {
+    U256::from_be_bytes(bytes)
+}

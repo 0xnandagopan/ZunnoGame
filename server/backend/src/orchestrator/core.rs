@@ -8,7 +8,8 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use super::storage::{
-    current_timestamp, ActionOutput, GameInitiation, GameStatus, GameStatusResponse, PendingGame,
+    current_timestamp, u256_to_bytes32, ActionOutput, GameInitiation, GameStatus,
+    GameStatusResponse, PendingGame,
 };
 use crate::blockchain::{BlockchainAdapter, BlockchainSeed, U256};
 use crate::game::{perform_shuffle, GameState};
@@ -290,8 +291,10 @@ impl GameOrchestrator {
     ) -> Result<()> {
         tracing::info!(session_id = session_id, "Finalizing game with VRF seed");
 
+        let seed = u256_to_bytes32(random_value);
+
         // Perform shuffle
-        let shuffle_outcome = perform_shuffle(num_players, cards_per_player, random_value)?;
+        let shuffle_outcome = perform_shuffle(num_players, cards_per_player, seed)?;
 
         tracing::info!(session_id = session_id, "Shuffle complete");
 

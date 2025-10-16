@@ -1,6 +1,5 @@
-// script/src/lib.rs (NEW FILE)
-
-use alloy_primitives::U256;
+// script/src/lib.rs
+//
 use alloy_sol_types::SolType;
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
@@ -16,7 +15,7 @@ pub const ZUNNOGAME_ELF: &[u8] = include_elf!("zunno-program");
 pub struct ProofInput {
     pub num_players: u8,
     pub cards_per_player: u8,
-    pub seed: U256,
+    pub seed: [u8; 32],
 }
 
 /// Generated proof output
@@ -109,7 +108,7 @@ impl ProofGenerator {
                 .map_err(|e| anyhow!("Proof serialization failed: {}", e))?;
 
         // Decode public values for returning
-        let decoded_public_values = PublicValuesStruct::abi_decode(&public_values, true)
+        let decoded_public_values = PublicValuesStruct::abi_decode(&public_values)
             .map_err(|e| anyhow!("Failed to decode public values: {}", e))?;
 
         tracing::info!("Proof conversion complete");
@@ -136,7 +135,7 @@ impl ProofGenerator {
             .run()
             .map_err(|e| anyhow!("Execution failed: {}", e))?;
 
-        let decoded = PublicValuesStruct::abi_decode(&public_values.as_slice(), true)
+        let decoded = PublicValuesStruct::abi_decode(&public_values.as_slice())
             .map_err(|e| anyhow!("Failed to decode public values: {}", e))?;
 
         Ok(decoded)
@@ -153,7 +152,7 @@ fn to_hex_with_prefix(bytes: &[u8]) -> String {
 pub fn generate_proof_from_inputs(
     num_players: u8,
     cards_per_player: u8,
-    seed: U256,
+    seed: [u8; 32],
 ) -> Result<ProofOutput> {
     let generator = ProofGenerator::new()?;
     generator.generate_proof(ProofInput {

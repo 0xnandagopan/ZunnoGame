@@ -1,5 +1,3 @@
-use alloy_primitives;
-use alloy_primitives::U256;
 use alloy_sol_types::sol;
 use anyhow::{anyhow, Result};
 use rand::seq::SliceRandom;
@@ -29,18 +27,9 @@ pub struct ShuffleOutcome {
     pub draw_pile_count: u64,
 }
 
-pub fn u256_to_bytes32(value: U256) -> [u8; 32] {
-    let mut bytes = [0u8; 32];
-    bytes.copy_from_slice(&value.to_be_bytes::<32>());
-    bytes
-}
-
 /// Fisher-Yates shuffle
-pub fn shuffle_deck(deck: &mut [u8], seed: U256) {
-    // Convert U256 seed to [u8; 32]
-    let seed_bytes = u256_to_bytes32(seed);
-
-    let mut rng = ChaCha20Rng::from_seed(seed_bytes);
+pub fn shuffle_deck(deck: &mut [u8], seed: [u8; 32]) {
+    let mut rng = ChaCha20Rng::from_seed(seed);
     deck.shuffle(&mut rng);
 }
 
@@ -95,7 +84,7 @@ pub fn validate_game_params(num_players: u8, cards_per_player: u8) -> Result<()>
 pub fn perform_shuffle(
     num_players: u8,
     cards_per_player: u8,
-    seed: U256,
+    seed: [u8; 32],
 ) -> Result<ShuffleOutcome> {
     match validate_game_params(num_players, cards_per_player) {
         Ok(_) => (),
