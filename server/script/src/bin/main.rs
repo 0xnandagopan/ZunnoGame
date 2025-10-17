@@ -1,27 +1,26 @@
-// script/src/bin/main.rs (REFACTORED)
+// script/src/bin/main.rs
 
-use alloy_primitives::U256;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::Parser;
 use std::{fs::File, io::Write};
 
 // Import from library
-use zunnogame_script::{ProofGenerator, ProofInput, ProofOutput};
+use zunnogame_script::{ProofGenerator, ProofInput};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
     /// Number of players
-    #[arg(short, long, default_value_t = 2)]
+    #[arg(short, long)]
     players: u8,
 
     /// Cards per player
-    #[arg(short, long, default_value_t = 7)]
+    #[arg(short, long)]
     cards: u8,
 
-    /// Seed value (as decimal)
-    #[arg(short, long, default_value_t = 12345)]
-    seed: U256,
+    /// Seed value
+    #[arg(short, long)]
+    seed: [u8; 32],
 
     /// Output file path
     #[arg(short, long, default_value = "proof.json")]
@@ -39,7 +38,6 @@ fn main() -> Result<()> {
     println!("=== Zunno Game Proof Generator ===");
     println!("Players: {}", args.players);
     println!("Cards per player: {}", args.cards);
-    println!("Seed: {}", args.seed);
     println!("Output: {}", args.output);
     println!();
 
@@ -53,7 +51,7 @@ fn main() -> Result<()> {
     let input = ProofInput {
         num_players: args.players,
         cards_per_player: args.cards,
-        seed: U256::from(args.seed),
+        seed: args.seed,
     };
 
     // Generate proof
@@ -62,17 +60,23 @@ fn main() -> Result<()> {
     println!("✓ Proof generated");
     println!();
 
-    // Write to file
-    println!("Writing to {}...", args.output);
-    let json_string: Result<String> = serde_json::to_string_pretty(&output);
-    let mut file = File::create(&args.output)?;
-    file.write_all(json_string.as_bytes())?;
-    println!("✓ Written");
-    println!();
+    match serde_json::to_string_pretty(&output) {
+        Ok(data) => {
+            println!("Writing to {}...", args.output);
+            let mut file = File::create(&args.output)?;
+            file.write_all(data.as_bytes())?;
+            println!("✓ Written");
+            println!();
 
-    println!("=== Success ===");
-    println!("Proof ID: {}", &output.image_id[..18]);
-    println!("Public inputs: {}", &output.pub_inputs[..18]);
+            println!("=== Success ===");
+            println!("Proof ID: {}", &data.image_id[..18]);
+            println!("Public inputs: {}", &data.pub_inputs[..18]);
 
-    Ok(())
+            Ok(())
+        }
+        Err(e) => {
+            tracing::error!("Failed to serialize proof output: {}", e);
+            return Err(anyhow!("Proof output serialization failed: {}", err));
+        }
+    }
 }

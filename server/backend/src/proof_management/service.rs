@@ -1,10 +1,14 @@
 // backend/src/proof_management/service.rs
 
-use pinata_sdk::{ApiError, PinByJson, PinataApi};
-use reqwest::multipart;
+use pinata_sdk::{
+    // ApiError,
+    PinByJson,
+    PinataApi,
+};
 use serde::Deserialize;
 
-use config::IpfsProvider;
+use super::config::IpfsProvider;
+use super::errors::{IpfsError, IpfsResult};
 
 #[derive(Deserialize, Debug)]
 pub struct PinataUploadResponse {
@@ -14,9 +18,8 @@ pub struct PinataUploadResponse {
     pub pin_size: u64,
 }
 
-#[derive(Clone, Debug)]
 pub struct IpfsUploader {
-    api: PinataApi,
+    pub api: PinataApi,
 }
 
 impl IpfsUploader {
@@ -26,12 +29,12 @@ impl IpfsUploader {
     }
 
     /// Upload JSON data to IPFS and return the CID
-    pub async fn upload_json<T: serde::Serialize>(&self, data: &T) -> Result<String> {
+    pub async fn upload_json<T: serde::Serialize>(&self, data: &T) -> IpfsResult<String> {
         let json_data = serde_json::to_string_pretty(data)?;
 
         match self.api.pin_json(PinByJson::new(json_data)).await {
             Ok(pinned_object) => {
-                return pinned_object.ipfs_hash;
+                return Ok(pinned_object.ipfs_hash);
             }
             Err(e) => {
                 return Err(IpfsError::UploadFailed(format!(

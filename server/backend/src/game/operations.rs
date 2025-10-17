@@ -1,6 +1,7 @@
 // backend/src/game/operations.rs
 
 use super::{GameState, PlayerId};
+use crate::orchestrator::u256_to_bytes32;
 use alloy::primitives::U256;
 use anyhow::{anyhow, Result};
 use zunnogame_lib::shuffle_deck;
@@ -27,7 +28,8 @@ pub fn draw_card(game_state: &mut GameState, player_id: PlayerId) -> Result<u8> 
 
         // Reshuffle with derived seed
         let new_seed = game_state.seed_metadata.value.wrapping_add(U256::from(1));
-        shuffle_deck(&mut game_state.draw_pile, new_seed);
+        let new_seed_bytes = u256_to_bytes32(new_seed);
+        shuffle_deck(&mut game_state.draw_pile, new_seed_bytes);
     }
 
     let card = game_state

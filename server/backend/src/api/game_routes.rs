@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use crate::game::GameStateJS;
 use crate::orchestrator::{GameInitiation, GameOrchestrator, GameStatusResponse};
-use zunnogame_script::ProofOutput;
+// use zunnogame_script::ProofOutput;
 
 /// Request body for starting a new game
 #[derive(Debug, Deserialize)]

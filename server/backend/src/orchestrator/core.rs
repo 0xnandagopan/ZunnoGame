@@ -11,9 +11,12 @@ use super::storage::{
     current_timestamp, u256_to_bytes32, ActionOutput, GameInitiation, GameStatus,
     GameStatusResponse, PendingGame,
 };
-use crate::blockchain::{BlockchainAdapter, BlockchainSeed, U256};
+use crate::blockchain::{BlockchainAdapter, BlockchainSeed};
 use crate::game::{perform_shuffle, GameState};
-use crate::proof_management::{IpfsProvider, IpfsService, IpfsUploadConfig};
+use crate::proof_management::{
+    config::IpfsProvider,
+    retry_service::{IpfsService, IpfsUploadConfig},
+};
 use zunnogame_script::{ProofGenerator, ProofInput, ProofOutput};
 
 /// Main orchestrator that coordinates VRF requests, game initialization, and state management
@@ -291,10 +294,10 @@ impl GameOrchestrator {
     ) -> Result<()> {
         tracing::info!(session_id = session_id, "Finalizing game with VRF seed");
 
-        let seed = u256_to_bytes32(random_value);
+        let seed_bytes = u256_to_bytes32(random_value);
 
         // Perform shuffle
-        let shuffle_outcome = perform_shuffle(num_players, cards_per_player, seed)?;
+        let shuffle_outcome = perform_shuffle(num_players, cards_per_player, seed_bytes)?;
 
         tracing::info!(session_id = session_id, "Shuffle complete");
 
@@ -302,13 +305,12 @@ impl GameOrchestrator {
 
         let proof_result = tokio::task::spawn_blocking({
             let proof_generator = self.proof_generator.clone();
-            let random_value = random_value.clone();
 
             move || {
                 proof_generator.generate_proof(ProofInput {
                     num_players,
                     cards_per_player,
-                    seed: random_value,
+                    seed: seed_bytes,
                 })
             }
         })
@@ -321,18 +323,24 @@ impl GameOrchestrator {
             "Proof generated successfully"
         );
 
-        // Generate JSON output
-        let output = ActionOutput {
-            id: session_id,
-            timestamp: chrono::Utc::now().to_rfc3339(),
-            data: serde_json::to_string_pretty(&proof_result), //proof-json
-            ipfs_cid: None,
+        let output = match serde_json::to_string_pretty(&proof_result) {
+            Ok(json_data) => ActionOutput {
+                id: session_id.to_string(),
+                timestamp: chrono::Utc::now().to_rfc3339(),
+                data: json_data, // String representation of the proof result
+                ipfs_cid: None,
+            },
+            Err(e) => {
+                // Handle the error appropriately
+                tracing::error!("Failed to serialize proof_result: {}", e);
+                return Err(anyhow!("Proof output serialization failed: {}", err));
+            }
         };
 
         let proof_cid: String = self.upload_proof(output).await?;
 
         tracing::info!(
-            session_id = session_id,
+            session_id = session_id.to_string(),
             proof_cid = %proof_cid,
             "Proof stored"
         );
@@ -380,7 +388,7 @@ impl GameOrchestrator {
             }
             Err(err) => {
                 tracing::error!("Failed to upload proof to IPFS: {}", err);
-                None
+                return Err(anyhow!("Proof upload failed: {}", err));
             }
         }
     }

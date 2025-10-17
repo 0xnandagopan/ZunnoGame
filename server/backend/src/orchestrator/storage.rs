@@ -52,7 +52,7 @@ pub struct GameStatusResponse {
 pub struct ActionOutput {
     pub id: String,
     pub timestamp: String,
-    pub data: serde_json::Value,
+    pub data: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ipfs_cid: Option<String>,
 }

@@ -3,8 +3,8 @@
 use alloy_sol_types::SolType;
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
-use sp1_sdk::{include_elf, HashableKey, ProverClient, SP1Stdin};
-use sp1_zkv_sdk::SP1ZkvProofWithPublicValues;
+use sp1_sdk::{include_elf, EnvProver, HashableKey, ProverClient, SP1Stdin};
+use sp1_zkv_sdk::{ZkvProver,SP1ZkvProofWithPublicValues};
 use zunnogame_lib::PublicValuesStruct;
 
 /// The ELF (executable and linkable format) file for the Succinct RISC-V zkVM.
@@ -31,7 +31,7 @@ pub struct ProofOutput {
 
 /// SP1 Proof Generator
 pub struct ProofGenerator {
-    client: ProverClient,
+    client: EnvProver,
     pk: sp1_sdk::SP1ProvingKey,
     vk: sp1_sdk::SP1VerifyingKey,
 }
@@ -56,7 +56,7 @@ impl ProofGenerator {
         tracing::info!(
             num_players = input.num_players,
             cards_per_player = input.cards_per_player,
-            seed = %input.seed,
+            seed = hex::encode(input.seed),
             "Generating ZK proof"
         );
 
@@ -108,7 +108,7 @@ impl ProofGenerator {
                 .map_err(|e| anyhow!("Proof serialization failed: {}", e))?;
 
         // Decode public values for returning
-        let decoded_public_values = PublicValuesStruct::abi_decode(&public_values)
+        let _decoded_public_values = PublicValuesStruct::abi_decode(&public_values)
             .map_err(|e| anyhow!("Failed to decode public values: {}", e))?;
 
         tracing::info!("Proof conversion complete");

@@ -2,8 +2,9 @@
 
 use std::time::Duration;
 
-use config::IpfsProvider;
-use service::IpfsUploader;
+use super::config::IpfsProvider;
+use super::errors::{IpfsError, IpfsResult};
+use super::service::IpfsUploader;
 
 #[derive(Clone)]
 pub struct IpfsUploadConfig {
@@ -34,7 +35,7 @@ impl IpfsService {
     }
 
     /// Upload with automatic retry on failure
-    pub async fn upload_with_retry<T: serde::Serialize>(&self, data: &T) -> Result<String> {
+    pub async fn upload_with_retry<T: serde::Serialize>(&self, data: &T) -> IpfsResult<String> {
         let mut attempts = 0;
 
         loop {
