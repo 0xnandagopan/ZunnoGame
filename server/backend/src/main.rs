@@ -4,6 +4,7 @@ mod api;
 mod blockchain;
 mod game;
 mod orchestrator;
+mod proof_management;
 
 use anyhow::Result;
 use axum::{

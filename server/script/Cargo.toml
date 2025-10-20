@@ -2,19 +2,19 @@
 version = "0.1.0"
 name = "zunno-script"
 edition = "2021"
-default-run = "zunno"
+# default-run = "zunno"
 
-[[bin]]
-name = "zunno"
-path = "src/bin/main.rs"
+# [[bin]]
+# name = "zunno"
+# path = "src/bin/main.rs"
 
-[[bin]]
-name = "evm"
-path = "src/bin/evm.rs"
+# [[bin]]
+# name = "evm"
+# path = "src/bin/evm.rs"
 
-[[bin]]
-name = "vkey"
-path = "src/bin/vkey.rs"
+# [[bin]]
+# name = "vkey"
+# path = "src/bin/vkey.rs"
 
 [lib]
 name = "zunnogame_script"

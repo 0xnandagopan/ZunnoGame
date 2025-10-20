@@ -333,7 +333,7 @@ impl GameOrchestrator {
             Err(e) => {
                 // Handle the error appropriately
                 tracing::error!("Failed to serialize proof_result: {}", e);
-                return Err(anyhow!("Proof output serialization failed: {}", err));
+                return Err(anyhow!("Proof output serialization failed: {}", e));
             }
         };
 
