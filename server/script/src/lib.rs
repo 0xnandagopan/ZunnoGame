@@ -4,7 +4,7 @@ use alloy_sol_types::SolType;
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use sp1_sdk::{include_elf, EnvProver, HashableKey, ProverClient, SP1Stdin};
-use sp1_zkv_sdk::{ZkvProver,SP1ZkvProofWithPublicValues};
+use sp1_zkv_sdk::{SP1ZkvProofWithPublicValues, ZkvProver};
 use zunnogame_lib::PublicValuesStruct;
 
 /// The ELF (executable and linkable format) file for the Succinct RISC-V zkVM.

@@ -1,5 +1,6 @@
 pub mod config;
 pub mod errors;
+pub mod proof_verification;
 pub mod retry_service;
 pub mod service;
 

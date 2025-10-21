@@ -15,6 +15,7 @@ use crate::blockchain::{BlockchainAdapter, BlockchainSeed};
 use crate::game::{perform_shuffle, GameState};
 use crate::proof_management::{
     config::IpfsProvider,
+    proof_verification::verify_proof,
     retry_service::{IpfsService, IpfsUploadConfig},
 };
 use zunnogame_script::{ProofGenerator, ProofInput, ProofOutput};
@@ -323,6 +324,14 @@ impl GameOrchestrator {
             "Proof generated successfully"
         );
 
+        let result: ProofOutput = proof_result.clone();
+        let verification_tx = match verify_proof(result).await {
+            Ok(tx_hash) => tx_hash,
+            Err(e) => {
+                return Err(anyhow!(e));
+            }
+        };
+
         let output = match serde_json::to_string_pretty(&proof_result) {
             Ok(json_data) => ActionOutput {
                 id: session_id.to_string(),
@@ -356,6 +365,7 @@ impl GameOrchestrator {
                 request_id,
             },
             proof_cid,
+            verification_tx,
         };
 
         // Store completed game

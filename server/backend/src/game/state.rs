@@ -25,6 +25,7 @@ pub struct GameState {
     pub is_shuffled: bool,
     pub seed_metadata: BlockchainSeed,
     pub proof_cid: String, // IPFS CID
+    pub verification_tx: String,
 }
 
 impl GameState {
@@ -36,6 +37,7 @@ impl GameState {
             is_shuffled: false,
             seed_metadata: BlockchainSeed::default(),
             proof_cid: String::new(),
+            verification_tx: String::new(),
         }
     }
 
