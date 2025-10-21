@@ -34,6 +34,10 @@ contract UnoGame is ReentrancyGuard {
     event GameStarted(uint256 indexed gameId);
     event MoveCommitted(uint256 indexed gameId, bytes32 moveHash);
     event GameEnded(uint256 indexed gameId);
+    event RequestFulfilled(
+        uint256 indexed requestId,
+        uint256 randomWord
+    ); 
 
     modifier validateGame(uint256 _gameId, GameStatus requiredStatus) {
         require(_gameId > 0 && _gameId <= _gameIdCounter, "Invalid game ID");
@@ -49,12 +53,13 @@ contract UnoGame is ReentrancyGuard {
         return requestId;
     }
 
-    function getRandomWords () public view returns (uint256){
-        uint256 lastRequestId = randomWordContract.lastRequestId();
+    function getRandomWords (uint256 req_Id) public view returns (uint256){
+        uint256 _lastRequestId = randomWordContract.lastRequestId();
 
-        (bool fulfilled, uint256[] memory randomWords) = randomWordContract.getRequestStatus(lastRequestId);
+        (bool fulfilled, uint256[] memory randomWords) = randomWordContract.getRequestStatus(req_Id);
 
         require(fulfilled, "Request not fulfilled yet");
+        emit RequestFulfilled(req_Id, randomWords[0]);
         return randomWords[0]; 
     }
 

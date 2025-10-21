@@ -8,18 +8,36 @@ pub async fn verify_proof(proof_result: ProofOutput) -> Result<String, anyhow::E
     let zkv_api_base_url: String = env::var("ZKV_API_BASE_URL").unwrap();
     let relayer_api_key: String = env::var("RELAYER_API_KEY").unwrap();
 
+    let client = Client::new();
+
+    let zkv_vk_submission = serde_json::json!({
+      "proofType": "sp1",
+      "vk": proof_result.image_id,
+    });
+
+    let vk_reg_client_response = client
+        .post(format!(
+            "{}/register-vk/{}",
+            zkv_api_base_url, relayer_api_key
+        ))
+        .json(&zkv_vk_submission)
+        .send()
+        .await?;
+
+    let vk_reg_response: serde_json::Value = vk_reg_client_response.json().await?;
+
+    let vk_hash = vk_reg_response["vkHash"].as_str().unwrap();
+
     /// proof submission payload for ZKV
     let zkv_proof_submission = serde_json::json!({
         "proofType": "sp1",
-        "vkRegistered": "false",
+        "vkRegistered": true,
         "proofData": {
             "proof": proof_result.proof,
             "publicSignals": proof_result.pub_inputs,
-            "vk": proof_result.image_id
+            "vk": vk_hash
         }
     });
-
-    let client = Client::new();
 
     tracing::info!("Initiating submission to ZKV.");
 
