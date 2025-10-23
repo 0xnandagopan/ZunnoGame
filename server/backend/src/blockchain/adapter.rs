@@ -46,8 +46,7 @@ pub struct BlockchainAdapter {
 impl BlockchainAdapter {
     /// Initialize adapter with both WebSocket (primary) and HTTP (fallback)
     pub async fn new() -> Result<Self> {
-        dotenvy::dotenv().ok();
-
+        
         // Load configuration
         let ws_rpc_url = env::var("WS_RPC_URL")
             .map_err(|_| anyhow!("WS_RPC_URL not configured (e.g., wss://...)"))?;

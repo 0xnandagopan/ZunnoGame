@@ -11,11 +11,18 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use rustls::crypto::{ring, CryptoProvider};
 use std::sync::Arc;
 use tower_http::trace::TraceLayer;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    CryptoProvider::install_default(ring::default_provider())
+        .expect("Failed to install default crypto provider");
+
+    // Load .env file
+    dotenvy::dotenv().ok();
+
     // Initialize tracing
     tracing_subscriber::fmt()
         .with_target(false)
