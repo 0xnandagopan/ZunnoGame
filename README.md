@@ -142,7 +142,7 @@ The second phase introduces cryptographic guarantees of fairness:
 
 ## 🪄 Live App
 
-Try the live game Zunno β.v.01 [here](https://zunno.xyz)
+Try the live game Zunno β.v.01 [here](https://zunno.xyz) . 
 We are also live on BaseApp and [Farcaster](https://farcaster.xyz/miniapps/sT0wxMVbxIg_/zunno)
 
 ---
