@@ -16,7 +16,7 @@ const MainPlayerView = ({
         justifyContent: "center",
         alignItems: "flex-end",
         padding: "0.5rem",
-        minHeight: "8rem",
+        minHeight: "7rem",
         position: "relative"
       }}>
         {playerDeck.map((item, i) => {
@@ -39,7 +39,9 @@ const MainPlayerView = ({
                 ':hover': {
                   transform: isPlayable ? `rotate(${cardAngle}deg) translateY(-10px)` : `rotate(${cardAngle}deg)`,
                   zIndex: 100 + i
-                }
+                },
+                zoom: turn != mainPlayer ? "0.85":"1.04",
+                filter: turn != mainPlayer ? "brightness(0.75)": ""
               }}
             >
               <img
@@ -55,7 +57,7 @@ const MainPlayerView = ({
                 alt={`cards-front ${item}`}
                 className={turn === mainPlayer ? "glow" : ""}
                 onClick={() => turn === mainPlayer ? onCardPlayedHandler(item) : null}
-                src={`../assets/cards-front/${item}.png`}
+                src={`../assets/cards-front/${item}.webp`}
               />
             </div>
           );
