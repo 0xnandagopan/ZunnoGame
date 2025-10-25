@@ -1,89 +1,64 @@
-# SP1 Project Template
+# Game of Uno Backend
 
-This is a template for creating an end-to-end [SP1](https://github.com/succinctlabs/sp1) project
-that can generate a proof of any RISC-V program.
+This is the backend server for the Game of Uno application. It handles game state management, real-time communication, and blockchain interactions.
 
-## Requirements
+## Setup Instructions
 
-- [Rust](https://rustup.rs/)
-- [SP1](https://docs.succinct.xyz/docs/sp1/getting-started/install)
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-## Running the Project
+2. Create a `.env` file based on the `.env.example` template:
+   ```bash
+   cp .env.example .env
+   ```
 
-There are 3 main ways to run this project: execute a program, generate a core proof, and
-generate an EVM-compatible proof.
+3. Update the `.env` file with your configuration values.
 
-### Build the Program
+4. Start the server:
+   ```bash
+   npm start
+   ```
 
-The program is automatically built through `script/build.rs` when the script is built.
+## Logging
 
-### Execute the Program
+The application uses Winston for logging. Logs are stored in the `logs` directory:
+- `error.log`: Contains all error-level logs
+- `combined.log`: Contains all logs of all levels
 
-To run the program without generating a proof:
-
-```sh
-cd script
-cargo run --release -- --execute
+You can configure the log level in the `.env` file:
+```
+LOG_LEVEL=info
 ```
 
-This will execute the program and display the output.
+Available log levels (from most to least severe):
+- error
+- warn
+- info
+- http
+- verbose
+- debug
+- silly
 
-### Generate an SP1 Core Proof
+In development mode, logs are also output to the console with color formatting.
 
-To generate an SP1 [core proof](https://docs.succinct.xyz/docs/sp1/generating-proofs/proof-types#core-default) for your program:
+## API Endpoints
 
-```sh
-cd script
-cargo run --release -- --prove
-```
+- `POST /api/create-claimable-balance`: Creates a claimable balance on the Diamnet blockchain
+- `GET /health`: Health check endpoint that returns server status
 
-### Generate an EVM-Compatible Proof
+## Socket.IO Events
 
-> [!WARNING]
-> You will need at least 16GB RAM to generate a Groth16 or PLONK proof. View the [SP1 docs](https://docs.succinct.xyz/docs/sp1/getting-started/hardware-requirements#local-proving) for more information.
+The server uses Socket.IO for real-time communication. Key events include:
+- `connection`: Triggered when a client connects
+- `joinRoom`: Joins a specific game room
+- `createGameRoom`: Creates a new game room
+- `gameStarted`: Signals the start of a game
+- `playCard`: Handles card play actions
+- `updateGameState`: Updates the game state
+- `disconnect`: Handles client disconnection
 
-Generating a proof that is cheap to verify on the EVM (e.g. Groth16 or PLONK) is more intensive than generating a core proof.
+## Graceful Shutdown
 
-To generate a Groth16 proof:
-
-```sh
-cd script
-cargo run --release --bin evm -- --system groth16
-```
-
-To generate a PLONK proof:
-
-```sh
-cargo run --release --bin evm -- --system plonk
-```
-
-These commands will also generate fixtures that can be used to test the verification of SP1 proofs
-inside Solidity.
-
-### Retrieve the Verification Key
-
-To retrieve your `programVKey` for your on-chain contract, run the following command in `script`:
-
-```sh
-cargo run --release --bin vkey
-```
-
-## Using the Prover Network
-
-We highly recommend using the [Succinct Prover Network](https://docs.succinct.xyz/docs/network/introduction) for any non-trivial programs or benchmarking purposes. For more information, see the [key setup guide](https://docs.succinct.xyz/docs/network/developers/key-setup) to get started.
-
-To get started, copy the example environment file:
-
-```sh
-cp .env.example .env
-```
-
-Then, set the `SP1_PROVER` environment variable to `network` and set the `NETWORK_PRIVATE_KEY`
-environment variable to your whitelisted private key.
-
-For example, to generate an EVM-compatible proof using the prover network, run the following
-command:
-
-```sh
-SP1_PROVER=network NETWORK_PRIVATE_KEY=... cargo run --release --bin evm
-```
+The server implements graceful shutdown handling for SIGTERM and SIGINT signals.
